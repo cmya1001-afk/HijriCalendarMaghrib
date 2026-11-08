@@ -8,7 +8,17 @@ Morocco's Ministry of Habous and Islamic Affairs starts each month the day after
 
 **For the full forecast and evidence, open `details.html`.** It is one self-contained page with the crescent maps, the model's predictions against Morocco's announcements, and its accuracy.
 
-Both pages need no build step to view. To host them, enable GitHub Pages for this repository (Settings → Pages → deploy from `main`, root folder); `index.html` is then the home page.
+Both pages need no build step to view.
+
+### Hosting on Netlify
+
+The site is set up for [Netlify](https://www.netlify.com/) in `netlify.toml`. On every push, Netlify rebuilds the calendar from `data/calendar.json` and publishes `index.html` (home page) and `details.html` from a `site/` folder, so the data files and scripts are not served. To connect it once:
+
+1. Sign in at app.netlify.com with GitHub and choose **Add new site → Import an existing project → GitHub**.
+2. Allow Netlify access to this repository and select it.
+3. Keep the settings it reads from `netlify.toml` (build command and `site` publish folder), pick the branch to publish, and click **Deploy**.
+
+After an announcement, update the data and push: the site updates within a minute.
 
 ## What the detailed page (`details.html`) shows
 

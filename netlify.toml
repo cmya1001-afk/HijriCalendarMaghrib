@@ -1,0 +1,21 @@
+# Netlify: builds the site into site/ and publishes only that folder
+# (the calendar as the home page, plus the detailed forecast page).
+# Uses only Python's standard library, so there is nothing to install.
+
+[build]
+  command = "mkdir -p site && python3 scripts/build_simple.py site/index.html && cp details.html site/details.html"
+  publish = "site"
+
+# The calendar briefly lived at /calendar.html
+[[redirects]]
+  from = "/calendar.html"
+  to = "/"
+  status = 301
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Frame-Options = "SAMEORIGIN"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
