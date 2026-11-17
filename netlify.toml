@@ -1,6 +1,6 @@
 # Netlify: builds the site into site/ and publishes only that folder (calendar home page, admin page and
-# the detailed forecast page), plus one function, /api/confirmations, that stores the month starts
-# confirmed on the admin page in Netlify Blobs. The build uses only Python's standard library.
+# the detailed forecast page), plus two functions: /api/confirmations stores the month starts confirmed
+# on the admin page in Netlify Blobs, and /api/date, /api/months, /api/holidays answer other apps. The build uses only Python's standard library.
 #
 # One-time setting in Netlify (Site configuration -> Environment variables):
 #   ADMIN_KEY = a long random value. The admin page is then  https://<your-site>/admin?key=<ADMIN_KEY>

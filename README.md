@@ -37,6 +37,47 @@ python scripts\export_evenings.py
 
 Confirmations live on Netlify, not in the repository. Before a rebuild with the maps, copy them from the admin page's *Export* box into `data/official_months_2024_2026.json` (and the sighting results into `data/dataset.json`), then run `python scripts/build_calendar.py` and push. Those months become official and the admin page continues from the next one.
 
+## API
+
+The Netlify site has a free, public JSON API, so other apps can use the same dates as the calendar. It includes months confirmed on the admin page (live within about a minute) and allows calls from any website (CORS).
+
+| Endpoint | Returns |
+|---|---|
+| `GET /api/date` | Today's Hijri date in Morocco |
+| `GET /api/date?date=2027-03-10` | The Hijri date for any day from 19 Jul 2023 to 25 Jan 2039 |
+| `GET /api/months?year=1448` | The months of a Hijri year with start, end and length (default: current year) |
+| `GET /api/holidays?year=1448` | Holidays and religious occasions of a Hijri year (default: current year) |
+| `GET /api` | This list |
+
+Every answer says whether the date is `"confirmed"` (official, or confirmed after the Ministry's announcement) or `"expected"` (forecast), with a `certainty` from 0 to 1 and the other possible date when there is a real chance of it. Example, `GET /api/date?date=2027-03-10`:
+
+```json
+{
+ "gregorian": "2027-03-10",
+ "weekday": "Wednesday",
+ "hijri": { "day": 1, "month": 10, "year": 1448,
+            "monthName": { "en": "Shawwal", "ar": "شوال", "fr": "Chaoual" },
+            "formatted": { "en": "1 Shawwal 1448 AH", "ar": "1 شوال 1448 هـ", "fr": "1 Chaoual 1448 H" } },
+ "status": "expected",
+ "certainty": 0.974,
+ "source": "forecast",
+ "alternative": null,
+ "month": { "start": "2027-03-10", "length": 29, "lengthCertain": false, "announcement": null },
+ "holiday": { "key": "eid-al-fitr", "name": { "en": "Eid al-Fitr", "ar": "عيد الفطر", "fr": "Aïd al-Fitr" }, "publicHoliday": true },
+ "isRamadan": false
+}
+```
+
+From another app, for example in JavaScript:
+
+```js
+const r = await fetch('https://<your-site>.netlify.app/api/date');
+const today = await r.json();
+console.log(today.hijri.formatted.ar);   // "6 جمادى الآخرة 1448 هـ"
+```
+
+Dates are civil days, as used in Morocco. The Islamic day itself begins at sunset the evening before. Errors come back as `{ "error": "..." }` with status 400 (bad input) or 404 (no data for that date or year).
+
 ## What the detailed page (`details.html`) shows
 
 - **Calendar:** each Hijri month as a grid, with the Hijri day large and the Gregorian date beside it. Ramadan, the two Eids, the Islamic New Year and Mawlid are highlighted. Weeks start on Monday.

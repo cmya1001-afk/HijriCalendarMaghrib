@@ -1,7 +1,6 @@
 {
   "name": "hijri-calendar-morocco",
   "private": true,
-  "type": "module",
   "description": "Netlify function dependencies for the Hijri calendar site",
   "dependencies": {
     "@netlify/blobs": "11.1.7"
