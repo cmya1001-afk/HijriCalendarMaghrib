@@ -1,8 +1,8 @@
-"""One-time export: measures every crescent map from the first forecast month to the end of the maps and
+"""Optional: measures every crescent map from the first forecast month to the end of the maps and
 writes data/evenings.json (zone shares over Morocco for each possible 29th evening).
 
-With this file in the repository, the website and the admin page can recompute every later month exactly,
-whatever start date the Ministry announces, without the map images.
+data/evenings.json is normally made from the map thumbnails by scripts/thumb_features.py (build_calendar.py runs it);
+this script measures the full maps instead. Both give the same probabilities to within 0.15 percentage points.
 
 Needs only Pillow (pip install pillow). On Windows PowerShell:
     $env:MOON_MAPS = "C:\\Users\\C100\\Desktop\\moon\\Moon Visibility Maps (moonsighting.com)"

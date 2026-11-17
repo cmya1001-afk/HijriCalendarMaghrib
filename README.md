@@ -24,14 +24,9 @@ The site runs on [Netlify](https://www.netlify.com/), set up in `netlify.toml`. 
 
 When the Ministry of Habous announces the start of a month, open the admin link, pick *Crescent seen* or *Not seen* (each shows its date and the model's probability), optionally paste the announcement link, and confirm. The public calendar shows the month as confirmed straight away, and every later month is re-forecast from it in the visitor's browser (`scripts/engine.js`, the same method as `build_calendar.py`). Only the next month can be confirmed, always 29 or 30 days after the previous one, and the last confirmation can be undone.
 
-**Exact forecasts after a surprise (one-time step)**
+**Forecasts after a surprise**
 
-The browser needs the zone shares of every possible 29th evening. Until `data/evenings.json` exists it uses the evenings the last build measured, and approximates rare cases (an evening before them counts as not visible, one after them as visible). To make it exact, run this once on the computer with the maps, then commit `data/evenings.json`:
-
-```powershell
-$env:MOON_MAPS = "C:\Users\C100\Desktop\moon\Moon Visibility Maps (moonsighting.com)"
-python scripts\export_evenings.py
-```
+To re-forecast after any confirmed date, the pages and the API need the visibility over Morocco for every possible 29th evening, not only the likely ones. `data/evenings.json` holds all 455 of them through 1460: 295 measured from the full maps by the build, and 160 measured from the map thumbnails stored in `data/calendar.json` by `scripts/thumb_features.py` (on the 334 evenings that have both, the two give the same probability to within 0.15 percentage points). `build_calendar.py` regenerates it on every rebuild. `scripts/export_evenings.py` measures every evening from the full maps instead, if you prefer.
 
 **Teaching the model**
 
@@ -139,7 +134,7 @@ To add a new month once Morocco announces it, add the evening to `data/dataset.j
 | `data/reports_parsed.json` | Morocco results parsed from moonsighting.org.uk monthly reports |
 | `data/maps_1437.csv` | URLs of the 1437 AH maps |
 | `data/calendar.json` | Everything the pages display (months, evidence, forecasts, stats) |
-| `data/evenings.json` | Optional, from `scripts/export_evenings.py`: zone shares for every possible future 29th evening |
+| `data/evenings.json` | Zone shares over Morocco for every possible future 29th evening (from `scripts/thumb_features.py`) |
 
 ## Credits and caveats
 

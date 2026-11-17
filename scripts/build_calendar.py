@@ -138,5 +138,6 @@ open(DATA/'calendar.json','w').write(js)
 tpl=open(ROOT/'scripts'/'template.html',encoding='utf-8').read()
 open(ROOT/'details.html','w',encoding='utf-8').write(tpl.replace('__DATA__',js))
 print('wrote details.html and data/calendar.json')
+import thumb_features; thumb_features.build_evenings()   # readings for every possible 29th evening
 import build_simple; build_simple.write_site(ROOT); print('wrote index.html and admin.html')
 for e in evidence: print(e['hy'],e['hm'],e['ev'],e['evening'],'p=%.2f'%e['p'],'seen' if e['seen'] else 'not', 'OK' if (e['p']>.5)==e['seen'] else 'MISS')
