@@ -1,8 +1,8 @@
-"""Builds index.html, the easy-to-read calendar (the site's main page), from data/calendar.json.
+"""Builds index.html, the easy-to-read calendar (the site's main page), and admin.html from data/calendar.json.
 The detailed forecast page with maps and model evidence is details.html (built by build_calendar.py).
-Needs no maps and no extra packages:  python scripts/build_simple.py [output.html]
+Needs no maps and no extra packages:  python scripts/build_simple.py [output folder]
 build_calendar.py runs it at the end, so both pages always match."""
-import json, os, sys
+import json, math, os, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -10,30 +10,94 @@ HEAD = ('<!doctype html>\n<html lang="ar" dir="rtl">\n<head>\n<meta charset="utf
         '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n')
 
 
-def simple_data():
+def _fit_coef(cal):
+    """Model weights at full precision. calendar.json stores them rounded, so when the build has not
+    saved 'coef_full' they are recovered from the stored forecasts: for borderline evenings
+    logit(p) = b + B*cyan + C*grey, solved by least squares over every stored evening."""
+    c = cal['coef']
+    if 'coef_full' in cal:
+        return cal['coef_full']
+    rows = []
+    for f in cal['future']:
+        for b in f['branches']:
+            z = b['f']
+            if z['A'] <= 0.02 and z['A'] + z['B'] + z['C'] >= 0.02 and 0.001 < b['p'] < 0.999:
+                rows.append((1.0, z['B'], z['C'], math.log(b['p'] / (1 - b['p']))))
+    if len(rows) < 10:
+        return dict(B=c['B'], C=c['C'], b=c['b'], rA=c['rateA'][0], rN=c['rateN'][0])
+    a = [[sum(r[i] * r[j] for r in rows) for j in range(3)] for i in range(3)]
+    y = [sum(r[i] * r[3] for r in rows) for i in range(3)]
+    for i in range(3):  # Gauss-Jordan on the 3x3 normal equations
+        piv = a[i][i]
+        a[i] = [v / piv for v in a[i]]; y[i] /= piv
+        for k in range(3):
+            if k != i:
+                m = a[k][i]; a[k] = [a[k][j] - m * a[i][j] for j in range(3)]; y[k] -= m * y[i]
+    return dict(B=y[1], C=y[2], b=y[0], rA=c['rateA'][0], rN=c['rateN'][0])
+
+
+def engine_data():
+    """What the pages need to rebuild the forecast in the browser (see scripts/engine.js)."""
     cal = json.load(open(ROOT / 'data' / 'calendar.json', encoding='utf-8'))
-    months = []
-    for m in cal['months']:
-        if m['hy'] > 1460:  # Muharram 1461 is only the end anchor for the last month
-            continue
-        fc = m['status'] == 'forecast'
-        months.append([m['hy'], m['hm'], m['start'], m['len'], 1 if fc else 0, m.get('dist') if fc else None])
-    return dict(built=cal['today'], months=months)
+    official = [[m['hy'], m['hm'], m['start']] for m in cal['months'] if m['status'] != 'forecast']
+    ev, exact = {}, False
+    full = ROOT / 'data' / 'evenings.json'          # every map evening, from scripts/export_evenings.py
+    if full.exists():
+        ev, exact = json.load(open(full, encoding='utf-8'))['evenings'], True
+    else:                                          # otherwise: the evenings the last build measured
+        for f in cal['future']:
+            for b in f['branches']:
+                ev.setdefault(f"{f['hy']}-{f['hm']}", {})[b['ev']] = [b['f'][k] for k in 'ABCDN']
+        for r in json.load(open(ROOT / 'data' / 'dataset.json', encoding='utf-8'))['recent']:
+            if r['seen'] is None:
+                ev.setdefault(f"{r['hy']}-{r['hm']}", {})[r['ev']] = [r['f']['all'][k] for k in 'ABCDN']
+    last = cal['months'][-1]
+    return dict(built=cal['today'], official=official, coef=_fit_coef(cal), ev=ev, exact=exact,
+                end=[last['hy'], last['hm']])
+
+
+def _page(template, detail_link, standalone):
+    tpl = open(ROOT / 'scripts' / template, encoding='utf-8').read()
+    engine = open(ROOT / 'scripts' / 'engine.js', encoding='utf-8').read()
+    js = json.dumps(engine_data(), separators=(',', ':'), ensure_ascii=False)
+    page = (tpl.replace('/*__ENGINE__*/', engine).replace('__SIMPLE_DATA__', js)
+               .replace('__DETAIL_LINK__', detail_link).replace('__CAN_DOWNLOAD__', 'true' if standalone else 'false'))
+    head = HEAD if template == 'simple_template.html' else HEAD.replace('lang="ar" dir="rtl"', 'lang="en" dir="ltr"')
+    return (head + page) if standalone else page
 
 
 def render(detail_link='details.html', standalone=True):
-    """standalone=True: a complete HTML file for GitHub Pages (with the calendar-file download).
-    standalone=False: the page body only, for hosts that add their own <head> and block downloads."""
-    tpl = open(ROOT / 'scripts' / 'simple_template.html', encoding='utf-8').read()
-    js = json.dumps(simple_data(), separators=(',', ':'), ensure_ascii=False)
-    page = (tpl.replace('__SIMPLE_DATA__', js).replace('__DETAIL_LINK__', detail_link)
-               .replace('__CAN_DOWNLOAD__', 'true' if standalone else 'false'))
-    return (HEAD + page) if standalone else page
+    """The calendar page. standalone=True: a complete HTML file for the website (with the calendar-file
+    download). standalone=False: the page body only, for hosts that add their own <head> and block downloads."""
+    return _page('simple_template.html', detail_link, standalone)
+
+
+def render_admin():
+    """The admin page (served at /admin) where the announced month starts are confirmed."""
+    return _page('admin_template.html', 'index.html', True)
+
+
+def write_base():
+    """netlify/lib/base.mjs: the last official month, which admin confirmations continue from."""
+    o = engine_data()['official'][-1]
+    (ROOT / 'netlify' / 'lib' / 'base.mjs').write_text(
+        '// Generated by scripts/build_simple.py from data/calendar.json: the last official month start.\n'
+        f'export default {{ hy: {o[0]}, hm: {o[1]}, start: "{o[2]}" }};\n', encoding='utf-8')
+
+
+def write_site(out_dir=ROOT):
+    """Writes index.html and admin.html into out_dir, and the function's base month."""
+    out_dir = Path(out_dir); out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / 'index.html').write_text(render(), encoding='utf-8')
+    (out_dir / 'admin.html').write_text(render_admin(), encoding='utf-8')
+    write_base()
+    return out_dir
 
 
 if __name__ == '__main__':
-    out = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / 'index.html'
-    standalone = os.environ.get('STANDALONE', '1') == '1'
-    link = os.environ.get('DETAIL_LINK', 'details.html')
-    out.write_text(render(link, standalone), encoding='utf-8')
-    print('wrote', out)
+    if os.environ.get('STANDALONE', '1') == '0':   # page body only, for a preview host: build_simple.py FILE
+        Path(sys.argv[1]).write_text(render(os.environ.get('DETAIL_LINK', ''), False), encoding='utf-8')
+        print('wrote', sys.argv[1])
+    else:                                          # build_simple.py [FOLDER]  (default: the repository root)
+        d = write_site(sys.argv[1] if len(sys.argv) > 1 else ROOT)
+        print('wrote', d / 'index.html', 'and', d / 'admin.html')

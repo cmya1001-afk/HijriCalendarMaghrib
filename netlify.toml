@@ -1,10 +1,25 @@
-# Netlify: builds the site into site/ and publishes only that folder
-# (the calendar as the home page, plus the detailed forecast page).
-# Uses only Python's standard library, so there is nothing to install.
+# Netlify: builds the site into site/ and publishes only that folder (calendar home page, admin page and
+# the detailed forecast page), plus one function, /api/confirmations, that stores the month starts
+# confirmed on the admin page in Netlify Blobs. The build uses only Python's standard library.
+#
+# One-time setting in Netlify (Site configuration -> Environment variables):
+#   ADMIN_KEY = a long random value. The admin page is then  https://<your-site>/admin?key=<ADMIN_KEY>
 
 [build]
-  command = "mkdir -p site && python3 scripts/build_simple.py site/index.html && cp details.html site/details.html"
+  command = "python3 scripts/build_simple.py site && cp details.html site/details.html"
   publish = "site"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/admin"
+  to = "/admin.html"
+  status = 200
 
 # The calendar briefly lived at /calendar.html
 [[redirects]]
@@ -19,3 +34,10 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
     X-Frame-Options = "SAMEORIGIN"
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+[[headers]]
+  for = "/admin*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Referrer-Policy = "no-referrer"
+    Cache-Control = "no-store"

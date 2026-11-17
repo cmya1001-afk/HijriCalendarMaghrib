@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Hijri Calendar Admin</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@500;600;700&family=Noto+Kufi+Arabic:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Arabic:wght@400;500&display=swap">
+<style>
+/* Layout: one narrow column. Key status, then the next month to confirm (two answer cards, optional link, save with an
+   in-page confirmation), then what the calendar will show next, the confirmations made here with undo, and the export. */
+:root{
+  --bg:#F1F4F2; --surface:#FFFFFF; --ink:#13201B; --muted:#56665E; --line:#D9E1DC; --wash:#E9EEEB;
+  --accent:#136F55; --accent-ink:#FFFFFF; --accent-soft:#DDEEE6;
+  --brass:#8C620E; --brass-soft:#F5E6C2; --red:#B42318; --red-soft:#FBE2DF;
+  --display:"Reem Kufi","Noto Kufi Arabic","Segoe UI",system-ui,sans-serif;
+  --body:"IBM Plex Sans","IBM Plex Sans Arabic",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0D1512; --surface:#141F1B; --ink:#E5EDE9; --muted:#97A9A0; --line:#25342E; --wash:#1B2924;
+  --accent:#4FC39C; --accent-ink:#08170F; --accent-soft:#16332A;
+  --brass:#E2B550; --brass-soft:#3A2F14; --red:#F2877C; --red-soft:#3A1A18; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D1512; --surface:#141F1B; --ink:#E5EDE9; --muted:#97A9A0; --line:#25342E; --wash:#1B2924;
+  --accent:#4FC39C; --accent-ink:#08170F; --accent-soft:#16332A;
+  --brass:#E2B550; --brass-soft:#3A2F14; --red:#F2877C; --red-soft:#3A1A18; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1,h2,h3{font-family:var(--display);font-weight:600;margin:0;line-height:1.2;text-wrap:balance}
+h1{font-size:clamp(22px,4vw,28px)} h2{font-size:21px} h3{font-size:17px}
+p{margin:0}
+a{color:var(--accent);text-underline-offset:3px}
+button,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+.ar{font-family:"Noto Kufi Arabic","IBM Plex Sans Arabic",sans-serif;unicode-bidi:isolate}
+.muted{color:var(--muted)} .num{font-variant-numeric:tabular-nums}
+.head{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between}
+.head .t{display:flex;flex-direction:column;gap:2px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.label{font-size:12px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;color:var(--muted)}
+.status{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:12px;font-size:15px}
+.status.ok{background:var(--accent-soft)} .status.warn{background:var(--brass-soft)} .status.bad{background:var(--red-soft)}
+.status b{font-weight:600}
+.status .dot{flex:none;width:10px;height:10px;border-radius:50%;margin-top:7px;background:var(--muted)}
+.status.ok .dot{background:var(--accent)} .status.warn .dot{background:var(--brass)} .status.bad .dot{background:var(--red)}
+.month{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+.month .n{font-family:var(--display);font-size:clamp(26px,5vw,34px);font-weight:700;line-height:1.15}
+.month .ar{font-size:22px;color:var(--muted)}
+.facts{display:flex;flex-direction:column;gap:4px;font-size:15px}
+.opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (max-width:560px){.opts{grid-template-columns:1fr}}
+.opt{all:unset;box-sizing:border-box;cursor:pointer;border:2px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;background:var(--surface)}
+.opt:hover{border-color:var(--accent)}
+.opt:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.opt[aria-checked="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.opt .k{font-weight:600}
+.opt .d{font-family:var(--display);font-size:20px;font-weight:600;line-height:1.3}
+.opt .s{font-size:14px;color:var(--muted)}
+.opt .p{font-size:13px;font-weight:600;color:var(--brass)}
+label.f{display:flex;flex-direction:column;gap:6px;font-size:14.5px}
+input[type=url]{padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--wash);width:100%;min-height:44px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;background:var(--accent);color:var(--accent-ink);border-radius:10px;padding:10px 18px;font-weight:600;cursor:pointer;min-height:44px}
+.btn:hover{filter:brightness(1.07)}
+.btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.danger{background:var(--red);color:#fff}
+.confirm{border:2px solid var(--accent);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;background:var(--accent-soft)}
+.confirm.danger{border-color:var(--red);background:var(--red-soft)}
+.msg{font-size:15px;padding:10px 14px;border-radius:10px}
+.msg.ok{background:var(--accent-soft)} .msg.bad{background:var(--red-soft)}
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.list li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:10px 0;border-top:1px solid var(--line);align-items:baseline}
+.list li:first-child{border-top:0}
+.list .m{font-weight:600}
+.list .x{font-size:14px;color:var(--muted);grid-column:1}
+.list .r{grid-row:1/3;grid-column:2;font-size:13.5px;text-align:end}
+.chip{display:inline-flex;align-items:center;font-size:12.5px;font-weight:600;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.chip.ok{background:var(--accent-soft);color:var(--accent)} .chip.exp{background:var(--brass-soft);color:var(--brass)}
+textarea{width:100%;min-height:150px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--wash);font-family:ui-monospace,Consolas,monospace;font-size:13px;resize:vertical}
+details summary{cursor:pointer;font-weight:600}
+</style>
+
+<div class="wrap" id="app">
+  <header class="head">
+    <div class="t"><span class="label">Hijri Calendar · Morocco</span><h1>Admin: confirm month starts</h1></div>
+    <a href="/" id="viewCal">View the calendar →</a>
+  </header>
+
+  <div id="keyStatus" class="status warn"><span class="dot"></span><span>Checking the admin link…</span></div>
+
+  <section class="card" id="nextCard" aria-labelledby="nextH"></section>
+  <section class="card" id="aheadCard"></section>
+  <section class="card" id="histCard"></section>
+
+  <section class="card">
+    <details>
+      <summary>Export for the repository</summary>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
+        <p class="muted" style="font-size:14.5px">The model only learns from dates stored in the repository. Before your next rebuild with the moon maps, add these entries to <code>data/official_months_2024_2026.json</code> (and the sighting result for each 29th evening to <code>data/dataset.json</code>), then run <code>python scripts/build_calendar.py</code>. After that rebuild these months are official and the admin page continues from the next one.</p>
+        <textarea id="export" readonly aria-label="Confirmed months as JSON"></textarea>
+        <div class="row"><button type="button" class="btn ghost" id="copyBtn">Copy</button><span id="copyMsg" class="muted" aria-live="polite"></span></div>
+      </div>
+    </details>
+  </section>
+</div>
+
+<script>
+/* Forecast engine shared by index.html and admin.html (inlined by scripts/build_simple.py).
+   From the official month starts, the months confirmed on the admin page, the model weights and the
+   visibility shares measured on each possible 29th evening, it rebuilds the month chain the same way
+   scripts/build_calendar.py does: the probability of each start date (forward pass) and the most
+   likely consistent chain of month starts (Viterbi), so every month is 29 or 30 days.
+
+   Data D (written by build_simple.py):
+     official: [[hy, hm, "YYYY-MM-DD"], ...]   official month starts, in order
+     coef:     {B, C, b, rA, rN}               cyan/grey weights, intercept, green-night and blank-night rates
+     ev:       {"hy-hm": {"YYYY-MM-DD": [A, B, C, D, N]}}  zone shares over Morocco on the evenings that
+               decide month hy-hm (exact = true when every map evening is listed)
+     end:      [hy, hm]                        last month to forecast (an anchor; not shown)
+*/
+var HijriEngine = (function () {
+  'use strict';
+  var DAY = 864e5;
+  function dn(s) { return Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10)) / DAY; }
+  function iso(n) { return new Date(n * DAY).toISOString().slice(0, 10); }
+  function nextMonth(hy, hm) { return hm === 12 ? [hy + 1, 1] : [hy, hm + 1]; }
+
+  // Probability that the crescent is reported, from the zone shares f = [A, B, C, D, N]
+  function pFeat(f, c) {
+    if (f[0] > 0.02) return c.rA;                 // some naked-eye green over Morocco
+    if (f[0] + f[1] + f[2] < 0.02) return c.rN;   // only red, or nothing visible
+    return 1 / (1 + Math.exp(-(c.b + c.B * f[1] + c.C * f[2])));
+  }
+  // Probability for the evening t (day number) that decides month hy-hm
+  function pEvening(D, hy, hm, t) {
+    var tab = D.ev[hy + '-' + hm] || {}, d = iso(t);
+    if (tab[d]) return pFeat(tab[d], D.coef);
+    var ds = Object.keys(tab).sort();
+    if (!ds.length) return 0.5;
+    if (d < ds[0]) return D.coef.rN;                // before the new-moon evening: not visible
+    if (d > ds[ds.length - 1]) return D.coef.rA;    // after the last map: easily visible
+    var best = ds[0];                               // gap in a partial table: nearest measured evening
+    ds.forEach(function (x) { if (Math.abs(dn(x) - t) < Math.abs(dn(best) - t)) best = x; });
+    return pFeat(tab[best], D.coef);
+  }
+
+  // confs: [{hy, hm, start, src?, at?}] from the admin page, in the order they were confirmed
+  function chain(D, confs) {
+    var known = D.official.map(function (o) { return { hy: o[0], hm: o[1], t: dn(o[2]), src: 'official' }; });
+    (confs || []).forEach(function (c) {
+      var last = known[known.length - 1], nx = nextMonth(last.hy, last.hm);
+      if (c.hy !== nx[0] || c.hm !== nx[1] || typeof c.start !== 'string') return;
+      var t = dn(c.start), gap = t - last.t;
+      if (gap === 29 || gap === 30) known.push({ hy: c.hy, hm: c.hm, t: t, src: 'admin', at: c.at || null, url: c.src || null });
+    });
+    var last = known[known.length - 1];
+
+    // months still to forecast, through D.end
+    var seq = [], cur = [last.hy, last.hm];
+    while (cur[0] * 12 + cur[1] < D.end[0] * 12 + D.end[1]) { cur = nextMonth(cur[0], cur[1]); seq.push(cur); }
+
+    var dist = new Map([[last.t, 1]]), vit = new Map([[last.t, [1, null]]]), steps = [];
+    seq.forEach(function (m) {
+      var hy = m[0], hm = m[1], nd = new Map(), nv = new Map();
+      dist.forEach(function (ps, s) {
+        var ev = s + 28, p = pEvening(D, hy, hm, ev);
+        [[ev + 1, p], [ev + 2, 1 - p]].forEach(function (x) { nd.set(x[0], (nd.get(x[0]) || 0) + ps * x[1]); });
+      });
+      vit.forEach(function (v, s) {
+        var ev = s + 28, p = pEvening(D, hy, hm, ev);
+        [[ev + 1, p], [ev + 2, 1 - p]].forEach(function (x) {
+          if (x[1] * v[0] > (nv.has(x[0]) ? nv.get(x[0])[0] : 0)) nv.set(x[0], [x[1] * v[0], s]);
+        });
+      });
+      var tot = 0; nd.forEach(function (v) { tot += v; });
+      dist = new Map(Array.from(nd).sort(function (a, b) { return a[0] - b[0]; })
+        .filter(function (e) { return e[1] / tot > 0.002; }).map(function (e) { return [e[0], e[1] / tot]; }));
+      var kept = Array.from(nv).filter(function (e) { return e[1][0] > 1e-12; }), mx = 0;
+      kept.forEach(function (e) { mx = Math.max(mx, e[1][0]); });
+      vit = new Map(kept.map(function (e) { return [e[0], [e[1][0] / mx, e[1][1]]]; }));
+      steps.push({ hy: hy, hm: hm, dist: dist, vit: vit });
+    });
+
+    // most likely consistent chain
+    var path = new Array(steps.length);
+    if (steps.length) {
+      var at = null, bv = -1;
+      steps[steps.length - 1].vit.forEach(function (v, k) { if (v[0] > bv) { bv = v[0]; at = k; } });
+      for (var i = steps.length - 1; i >= 0; i--) { path[i] = at; at = steps[i].vit.get(at)[1]; }
+    }
+
+    var months = known.map(function (k) { return { hy: k.hy, hm: k.hm, t0: k.t, fc: false, src: k.src, at: k.at || null, url: k.url || null, dist: null }; });
+    steps.forEach(function (st, i) {
+      var dd = {};
+      st.dist.forEach(function (v, k) { if (v >= 0.005) dd[iso(k)] = Math.round(v * 1e4) / 1e4; });
+      months.push({ hy: st.hy, hm: st.hm, t0: path[i], fc: true, src: 'forecast', dist: dd });
+    });
+    months.forEach(function (m, i) { m.len = i + 1 < months.length ? months[i + 1].t0 - m.t0 : 29; });
+
+    var nx = nextMonth(last.hy, last.hm), ev29 = last.t + 28;
+    return {
+      months: months,
+      known: known,
+      next: { hy: nx[0], hm: nx[1], prevStart: last.t, ev: ev29, p: pEvening(D, nx[0], nx[1], ev29) }
+    };
+  }
+
+  return { chain: chain, pEvening: pEvening, dn: dn, iso: iso, nextMonth: nextMonth };
+})();
+if (typeof module !== 'undefined') module.exports = HijriEngine;
+
+</script>
+<script>
+const D = {"built":"2026-11-06","official":[[1445,1,"2023-07-19"],[1445,2,"2023-08-18"],[1445,3,"2023-09-17"],[1445,4,"2023-10-17"],[1445,5,"2023-11-15"],[1445,6,"2023-12-15"],[1445,7,"2024-01-13"],[1445,8,"2024-02-11"],[1445,9,"2024-03-12"],[1445,10,"2024-04-10"],[1445,11,"2024-05-10"],[1445,12,"2024-06-08"],[1446,1,"2024-07-07"],[1446,2,"2024-08-06"],[1446,3,"2024-09-05"],[1446,4,"2024-10-05"],[1446,5,"2024-11-04"],[1446,6,"2024-12-03"],[1446,7,"2025-01-02"],[1446,8,"2025-01-31"],[1446,9,"2025-03-02"],[1446,10,"2025-03-31"],[1446,11,"2025-04-29"],[1446,12,"2025-05-29"],[1447,1,"2025-06-27"],[1447,2,"2025-07-26"],[1447,3,"2025-08-25"],[1447,4,"2025-09-24"],[1447,5,"2025-10-24"],[1447,6,"2025-11-22"],[1447,7,"2025-12-22"],[1447,8,"2026-01-21"],[1447,9,"2026-02-19"],[1447,10,"2026-03-20"],[1447,11,"2026-04-19"],[1447,12,"2026-05-18"],[1448,1,"2026-06-17"],[1448,2,"2026-07-16"],[1448,3,"2026-08-14"],[1448,4,"2026-09-13"],[1448,5,"2026-10-13"]],"coef":{"B":2.360153177467495,"C":1.428847851700914,"b":-2.1076615498952975,"rA":0.9807692307692307,"rN":0.022222222222222223},"ev":{"1448-6":{"2026-11-10":[0.0,0.456,0.532,0.013,0.0]},"1448-7":{"2026-12-09":[0.0,0.0,0.0,0.0,1.0],"2026-12-10":[1.0,0.0,0.0,0.0,0.0]},"1448-8":{"2027-01-08":[0.0,0.0,0.482,0.518,0.0],"2027-01-09":[1.0,0.0,0.0,0.0,0.0]},"1448-9":{"2027-02-06":[0.0,0.0,0.002,0.0,0.998],"2027-02-07":[0.408,0.592,0.0,0.0,0.0]},"1448-10":{"2027-03-08":[0.0,0.0,0.0,0.0,1.0],"2027-03-09":[1.0,0.0,0.0,0.0,0.0]},"1448-11":{"2027-04-06":[0.0,0.0,0.002,0.0,0.998],"2027-04-07":[0.0,1.0,0.0,0.0,0.0]},"1448-12":{"2027-05-06":[0.0,0.0,0.0,0.0,1.0],"2027-05-07":[1.0,0.0,0.0,0.0,0.0]},"1449-1":{"2027-06-04":[0.0,0.0,0.0,0.0,1.0],"2027-06-05":[1.0,0.0,0.0,0.0,0.0]},"1449-2":{"2027-07-04":[0.0,0.0,0.938,0.062,0.0],"2027-07-05":[1.0,0.0,0.0,0.0,0.0]},"1449-3":{"2027-08-02":[0.0,0.0,0.0,0.0,1.0],"2027-08-03":[1.0,0.0,0.0,0.0,0.0]},"1449-4":{"2027-09-01":[0.0,0.0,0.482,0.518,0.0],"2027-09-02":[1.0,0.0,0.0,0.0,0.0]},"1449-5":{"2027-09-30":[0.0,0.0,0.0,0.0,1.0],"2027-10-01":[0.861,0.139,0.0,0.0,0.0]},"1449-6":{"2027-10-30":[0.0,0.089,0.399,0.512,0.0],"2027-10-31":[1.0,0.0,0.0,0.0,0.0]},"1449-7":{"2027-11-28":[0.0,0.0,0.0,0.0,1.0],"2027-11-29":[1.0,0.0,0.0,0.0,0.0]},"1449-8":{"2027-12-28":[0.0,0.0,0.501,0.499,0.0],"2027-12-29":[1.0,0.0,0.0,0.0,0.0]},"1449-9":{"2028-01-26":[0.0,0.0,0.0,0.0,1.0],"2028-01-27":[0.408,0.592,0.0,0.0,0.0]},"1449-10":{"2028-02-25":[0.0,0.0,0.0,0.0,1.0],"2028-02-26":[1.0,0.0,0.0,0.0,0.0]},"1449-11":{"2028-03-25":[0,0,0,0,1],"2028-03-26":[0.0,0.0,0.0,1.0,0.0]},"1449-12":{"2028-04-24":[0.0,0.0,0.0,0.0,1.0],"2028-04-25":[0.772,0.228,0.0,0.0,0.0]},"1450-1":{"2028-05-24":[0.0,0.0,0.0,1.0,0.0],"2028-05-25":[1.0,0.0,0.0,0.0,0.0]},"1450-2":{"2028-06-22":[0.0,0.0,0.0,0.0,1.0],"2028-06-23":[0.46,0.54,0.0,0.0,0.0]},"1450-3":{"2028-07-22":[0.0,0.0,0.0,0.488,0.512],"2028-07-23":[1.0,0.0,0.0,0.0,0.0]},"1450-4":{"2028-08-20":[0.0,0.0,0.0,0.0,1.0],"2028-08-21":[0.39,0.61,0.0,0.0,0.0]},"1450-5":{"2028-09-19":[0.0,0.0,0.129,0.672,0.199],"2028-09-20":[1.0,0.0,0.0,0.0,0.0]},"1450-6":{"2028-10-18":[0.0,0.0,0.0,0.0,1.0],"2028-10-19":[1.0,0.0,0.0,0.0,0.0]},"1450-7":{"2028-11-17":[0.193,0.711,0.097,0.0,0.0],"2028-11-18":[1.0,0.0,0.0,0.0,0.0]},"1450-8":{"2028-12-16":[0.0,0.0,0.0,0.61,0.39],"2028-12-17":[1.0,0.0,0.0,0.0,0.0]},"1450-9":{"2029-01-14":[0.0,0.0,0.0,0.0,1.0],"2029-01-15":[0.39,0.61,0.0,0.0,0.0]},"1450-10":{"2029-02-13":[0.0,0.0,0.0,0.0,1.0],"2029-02-14":[1.0,0.0,0.0,0.0,0.0]},"1450-11":{"2029-03-14":[0,0,0,0,1],"2029-03-15":[0.0,0.0,0.0,1.0,0.0]},"1450-12":{"2029-04-13":[0.0,0.0,0.0,0.0,1.0],"2029-04-14":[0.0,1.0,0.0,0.0,0.0]},"1451-1":{"2029-05-13":[0.0,0.0,0.0,0.0,1.0],"2029-05-14":[1.0,0.0,0.0,0.0,0.0]},"1451-2":{"2029-06-11":[0,0,0,0,1],"2029-06-12":[0.0,0.0,0.0,1.0,0.0]},"1451-3":{"2029-07-11":[0.0,0.0,0.0,0.0,1.0],"2029-07-12":[0.0,0.518,0.482,0.0,0.0]},"1451-4":{"2029-08-10":[0.0,0.0,0.0,0.0,1.0],"2029-08-11":[1.0,0.0,0.0,0.0,0.0]},"1451-5":{"2029-09-08":[0.0,0.0,0.0,0.0,1.0],"2029-09-09":[0.094,0.559,0.347,0.0,0.0],"2029-09-10":[1.0,0.0,0.0,0.0,0.0]},"1451-6":{"2029-10-08":[0.0,0.0,0.111,0.603,0.285],"2029-10-09":[1.0,0.0,0.0,0.0,0.0]},"1451-7":{"2029-11-06":[0.0,0.0,0.0,0.0,1.0],"2029-11-07":[1.0,0.0,0.0,0.0,0.0]},"1451-8":{"2029-12-06":[1.0,0.0,0.0,0.0,0.0],"2029-12-07":[1.0,0.0,0.0,0.0,0.0]},"1451-9":{"2030-01-04":[0.0,0.0,0.62,0.38,0.0],"2030-01-05":[1.0,0.0,0.0,0.0,0.0]},"1451-10":{"2030-02-02":[0.0,0.0,0.0,0.0,1.0],"2030-02-03":[1.0,0.0,0.0,0.0,0.0]},"1451-11":{"2030-03-04":[0.0,0.0,0.001,0.999,0.0],"2030-03-05":[1.0,0.0,0.0,0.0,0.0]},"1451-12":{"2030-04-02":[0.0,0.0,0.0,0.0,1.0],"2030-04-03":[0.0,0.996,0.004,0.0,0.0]},"1452-1":{"2030-05-02":[0.0,0.0,0.0,0.0,1.0],"2030-05-03":[1.0,0.0,0.0,0.0,0.0]},"1452-2":{"2030-05-31":[0,0,0,0,1],"2030-06-01":[0.0,0.0,0.0,0.0,1.0]},"1452-3":{"2030-06-30":[0.0,0.0,0.0,0.0,1.0],"2030-07-01":[0.0,0.0,0.0,0.891,0.109]},"1452-4":{"2030-07-30":[0.0,0.0,0.0,0.0,1.0],"2030-07-31":[0.0,0.326,0.56,0.114,0.0]},"1452-5":{"2030-08-29":[0.0,0.0,0.0,0.0,1.0],"2030-08-30":[1.0,0.0,0.0,0.0,0.0]},"1452-6":{"2030-09-28":[0.152,0.55,0.298,0.0,0.0],"2030-09-29":[1.0,0.0,0.0,0.0,0.0]},"1452-7":{"2030-10-27":[0.0,0.0,0.357,0.643,0.0],"2030-10-28":[1.0,0.0,0.0,0.0,0.0]},"1452-8":{"2030-11-25":[0.0,0.0,0.0,0.0,1.0],"2030-11-26":[1.0,0.0,0.0,0.0,0.0]},"1452-9":{"2030-12-25":[1.0,0.0,0.0,0.0,0.0],"2030-12-26":[1.0,0.0,0.0,0.0,0.0]},"1452-10":{"2031-01-23":[0.0,0.0,1.0,0.0,0.0],"2031-01-24":[1.0,0.0,0.0,0.0,0.0]},"1452-11":{"2031-02-21":[0.0,0.0,0.0,0.0,1.0],"2031-02-22":[1.0,0.0,0.0,0.0,0.0]},"1452-12":{"2031-03-23":[0.0,0.0,0.0,1.0,0.0],"2031-03-24":[1.0,0.0,0.0,0.0,0.0]},"1453-1":{"2031-04-21":[0.0,0.0,0.0,0.0,1.0],"2031-04-22":[1.0,0.0,0.0,0.0,0.0]},"1453-2":{"2031-05-21":[0.0,0.0,0.0,0.0,1.0],"2031-05-22":[1.0,0.0,0.0,0.0,0.0]},"1453-3":{"2031-06-19":[0.0,0.0,0.0,0.0,1.0],"2031-06-20":[0.0,0.0,0.0,0.697,0.303]},"1453-4":{"2031-07-19":[0.0,0.0,0.0,0.0,1.0],"2031-07-20":[0.0,0.0,0.327,0.673,0.0]},"1453-5":{"2031-08-18":[0.0,0.0,0.0,0.0,1.0],"2031-08-19":[0.075,0.578,0.347,0.0,0.0]},"1453-6":{"2031-09-17":[0.0,0.0,0.0,0.272,0.728],"2031-09-18":[1.0,0.0,0.0,0.0,0.0]},"1453-7":{"2031-10-16":[0.0,0.0,0.0,0.0,1.0],"2031-10-17":[0.527,0.473,0.0,0.0,0.0]},"1453-8":{"2031-11-15":[0.0,0.326,0.674,0.0,0.0],"2031-11-16":[1.0,0.0,0.0,0.0,0.0]},"1453-9":{"2031-12-14":[0.0,0.0,0.004,0.012,0.984],"2031-12-15":[1.0,0.0,0.0,0.0,0.0]},"1453-10":{"2032-01-13":[1.0,0.0,0.0,0.0,0.0],"2032-01-14":[1.0,0.0,0.0,0.0,0.0]},"1453-11":{"2032-02-11":[0.0,0.0,0.0,1.0,0.0],"2032-02-12":[1.0,0.0,0.0,0.0,0.0]},"1453-12":{"2032-03-11":[0.0,0.0,0.0,0.0,1.0],"2032-03-12":[1.0,0.0,0.0,0.0,0.0]},"1454-1":{"2032-04-10":[0.0,0.0,1.0,0.0,0.0],"2032-04-11":[1.0,0.0,0.0,0.0,0.0]},"1454-2":{"2032-05-09":[0.0,0.0,0.0,0.0,1.0],"2032-05-10":[1.0,0.0,0.0,0.0,0.0]},"1454-3":{"2032-06-08":[0.0,0.0,0.0,0.544,0.456],"2032-06-09":[1.0,0.0,0.0,0.0,0.0]},"1454-4":{"2032-07-07":[0.0,0.0,0.0,0.0,1.0],"2032-07-08":[0.0,0.0,0.488,0.512,0.0]},"1454-5":{"2032-08-06":[0.0,0.0,0.0,0.0,1.0],"2032-08-07":[0.0,0.519,0.481,0.0,0.0]},"1454-6":{"2032-09-05":[0.0,0.0,0.0,0.0,1.0],"2032-09-06":[0.977,0.023,0.0,0.0,0.0]},"1454-7":{"2032-10-04":[0.0,0.0,0.0,0.0,1.0],"2032-10-05":[0.0,0.176,0.546,0.278,0.0]},"1454-8":{"2032-11-03":[0.0,0.0,0.0,0.0,1.0],"2032-11-04":[1.0,0.0,0.0,0.0,0.0]},"1454-9":{"2032-12-03":[0.0,1.0,0.0,0.0,0.0],"2032-12-04":[1.0,0.0,0.0,0.0,0.0]},"1454-10":{"2033-01-01":[0.0,0.0,0.0,0.0,1.0],"2033-01-02":[1.0,0.0,0.0,0.0,0.0]},"1454-11":{"2033-01-30":[0.0,0.0,0.0,0.0,1.0],"2033-01-31":[1.0,0.0,0.0,0.0,0.0]},"1454-12":{"2033-03-01":[0.0,0.0,0.0,0.959,0.041],"2033-03-02":[1.0,0.0,0.0,0.0,0.0]},"1455-1":{"2033-03-30":[0.0,0.0,0.0,0.0,1.0],"2033-03-31":[1.0,0.0,0.0,0.0,0.0]},"1455-2":{"2033-04-29":[0.0,0.0,0.865,0.135,0.0],"2033-04-30":[1.0,0.0,0.0,0.0,0.0]},"1455-3":{"2033-05-28":[0.0,0.0,0.0,0.0,1.0],"2033-05-29":[1.0,0.0,0.0,0.0,0.0]},"1455-4":{"2033-06-27":[0.0,0.0,0.206,0.794,0.0],"2033-06-28":[1.0,0.0,0.0,0.0,0.0]},"1455-5":{"2033-07-26":[0.0,0.0,0.0,0.0,1.0],"2033-07-27":[0.113,0.738,0.149,0.0,0.0]},"1455-6":{"2033-08-25":[0.0,0.0,0.003,0.008,0.989],"2033-08-26":[1.0,0.0,0.0,0.0,0.0]},"1455-7":{"2033-09-23":[0.0,0.0,0.0,0.0,1.0],"2033-09-24":[0.0,0.098,0.601,0.301,0.0]},"1455-8":{"2033-10-23":[0.0,0.0,0.0,0.0,1.0],"2033-10-24":[0.998,0.002,0.0,0.0,0.0]},"1455-9":{"2033-11-22":[0.0,0.0,0.427,0.573,0.0],"2033-11-23":[1.0,0.0,0.0,0.0,0.0]},"1455-10":{"2033-12-21":[0.0,0.0,0.0,0.0,1.0],"2033-12-22":[0.65,0.35,0.0,0.0,0.0]},"1455-11":{"2034-01-20":[0.0,0.0,0.0,0.0,1.0],"2034-01-21":[1.0,0.0,0.0,0.0,0.0]},"1455-12":{"2034-02-18":[0.0,0.0,0.0,0.0,1.0],"2034-02-19":[0.0,1.0,0.0,0.0,0.0]},"1456-1":{"2034-03-20":[0.0,0.0,0.0,0.0,1.0],"2034-03-21":[1.0,0.0,0.0,0.0,0.0]},"1456-2":{"2034-04-18":[0.0,0.0,0.0,0.0,1.0],"2034-04-19":[1.0,0.0,0.0,0.0,0.0]},"1456-3":{"2034-05-18":[0.0,0.0,0.327,0.673,0.0],"2034-05-19":[1.0,0.0,0.0,0.0,0.0]},"1456-4":{"2034-06-16":[0.0,0.0,0.0,0.0,1.0],"2034-06-17":[1.0,0.0,0.0,0.0,0.0]},"1456-5":{"2034-07-16":[0.0,0.176,0.514,0.31,0.0],"2034-07-17":[1.0,0.0,0.0,0.0,0.0]},"1456-6":{"2034-08-14":[0.0,0.0,0.0,0.0,1.0],"2034-08-15":[1.0,0.0,0.0,0.0,0.0]},"1456-7":{"2034-09-13":[0.0,0.204,0.772,0.023,0.0],"2034-09-14":[1.0,0.0,0.0,0.0,0.0]},"1456-8":{"2034-10-12":[0.0,0.0,0.0,0.0,1.0],"2034-10-13":[1.0,0.0,0.0,0.0,0.0]},"1456-9":{"2034-11-11":[0.0,0.0,0.432,0.568,0.0],"2034-11-12":[1.0,0.0,0.0,0.0,0.0]},"1456-10":{"2034-12-10":[0.0,0.0,0.0,0.0,1.0],"2034-12-11":[0.0,1.0,0.0,0.0,0.0]},"1456-11":{"2035-01-09":[0.0,0.0,0.0,0.0,1.0],"2035-01-10":[1.0,0.0,0.0,0.0,0.0]},"1456-12":{"2035-02-07":[0,0,0,0,1],"2035-02-08":[0.0,0.0,0.0,0.0,1.0]},"1457-1":{"2035-03-09":[0.0,0.0,0.0,0.0,1.0],"2035-03-10":[0.0,0.674,0.326,0.0,0.0]},"1457-2":{"2035-04-08":[0.0,0.0,0.0,0.0,1.0],"2035-04-09":[1.0,0.0,0.0,0.0,0.0]},"1457-3":{"2035-05-07":[0.0,0.0,0.0,0.0,1.0],"2035-05-08":[0.631,0.369,0.0,0.0,0.0]},"1457-4":{"2035-06-06":[0.0,0.0,0.002,0.99,0.008],"2035-06-07":[1.0,0.0,0.0,0.0,0.0]},"1457-5":{"2035-07-05":[0.0,0.0,0.0,0.0,1.0],"2035-07-06":[1.0,0.0,0.0,0.0,0.0]},"1457-6":{"2035-08-04":[0.0,0.847,0.153,0.0,0.0],"2035-08-05":[1.0,0.0,0.0,0.0,0.0]},"1457-7":{"2035-09-02":[0.0,0.0,0.0,0.999,0.001],"2035-09-03":[1.0,0.0,0.0,0.0,0.0]},"1457-8":{"2035-10-01":[0.0,0.0,0.0,0.0,1.0],"2035-10-02":[0.978,0.022,0.0,0.0,0.0]},"1457-9":{"2035-10-31":[0.0,0.0,0.37,0.63,0.0],"2035-11-01":[1.0,0.0,0.0,0.0,0.0]},"1457-10":{"2035-11-29":[0.0,0.0,0.0,0.0,1.0],"2035-11-30":[0.0,1.0,0.0,0.0,0.0]},"1457-11":{"2035-12-29":[0.0,0.0,0.0,0.0,1.0],"2035-12-30":[0.591,0.409,0.0,0.0,0.0]},"1457-12":{"2036-01-27":[0,0,0,0,1],"2036-01-28":[0.0,0.0,0.0,0.0,1.0]},"1458-1":{"2036-02-26":[0,0,0,0,1],"2036-02-27":[0.0,0.0,0.0,0.322,0.678]},"1458-2":{"2036-03-27":[0.0,0.0,0.0,0.0,1.0],"2036-03-28":[0.0,0.998,0.002,0.0,0.0]},"1458-3":{"2036-04-26":[0.0,0.0,0.0,0.0,1.0],"2036-04-27":[1.0,0.0,0.0,0.0,0.0]},"1458-4":{"2036-05-25":[0.0,0.0,0.0,0.0,1.0],"2036-05-26":[0.243,0.757,0.0,0.0,0.0]},"1458-5":{"2036-06-24":[0.0,0.0,0.0,0.801,0.199],"2036-06-25":[1.0,0.0,0.0,0.0,0.0]},"1458-6":{"2036-07-23":[0.0,0.0,0.0,0.0,1.0],"2036-07-24":[1.0,0.0,0.0,0.0,0.0]},"1458-7":{"2036-08-22":[0.527,0.473,0.0,0.0,0.0],"2036-08-23":[1.0,0.0,0.0,0.0,0.0]},"1458-8":{"2036-09-20":[0.0,0.031,0.969,0.0,0.0],"2036-09-21":[1.0,0.0,0.0,0.0,0.0]},"1458-9":{"2036-10-19":[0.0,0.0,0.0,0.0,1.0],"2036-10-20":[1.0,0.0,0.0,0.0,0.0]},"1458-10":{"2036-11-18":[0.0,0.244,0.756,0.0,0.0],"2036-11-19":[1.0,0.0,0.0,0.0,0.0]},"1458-11":{"2036-12-17":[0.0,0.0,0.0,0.0,1.0],"2036-12-18":[0.46,0.54,0.0,0.0,0.0]},"1458-12":{"2037-01-16":[0.0,0.0,0.0,0.0,1.0],"2037-01-17":[1.0,0.0,0.0,0.0,0.0]},"1459-1":{"2037-02-14":[0,0,0,0,1],"2037-02-15":[0.0,0.0,0.002,0.0,0.998]},"1459-2":{"2037-03-16":[0.0,0.0,0.0,0.0,1.0],"2037-03-17":[0.0,0.0,0.488,0.512,0.0]},"1459-3":{"2037-04-15":[0.0,0.0,0.0,0.0,1.0],"2037-04-16":[0.476,0.522,0.002,0.0,0.0]},"1459-4":{"2037-05-15":[0.0,0.0,0.002,0.0,0.998],"2037-05-16":[1.0,0.0,0.0,0.0,0.0]},"1459-5":{"2037-06-13":[0.0,0.0,0.0,0.0,1.0],"2037-06-14":[0.251,0.749,0.0,0.0,0.0]},"1459-6":{"2037-07-13":[0.0,0.0,0.006,0.994,0.0],"2037-07-14":[1.0,0.0,0.0,0.0,0.0]},"1459-7":{"2037-08-11":[0.0,0.0,0.0,0.0,1.0],"2037-08-12":[1.0,0.0,0.0,0.0,0.0]},"1459-8":{"2037-09-10":[1.0,0.0,0.0,0.0,0.0],"2037-09-11":[1.0,0.0,0.0,0.0,0.0]},"1459-9":{"2037-10-09":[0,0,0,0,1],"2037-10-10":[1.0,0.0,0.0,0.0,0.0]},"1459-10":{"2037-11-07":[0.0,0.0,0.0,0.0,1.0],"2037-11-08":[1.0,0.0,0.0,0.0,0.0]},"1459-11":{"2037-12-07":[0.0,0.031,0.969,0.0,0.0],"2037-12-08":[1.0,0.0,0.0,0.0,0.0]},"1459-12":{"2038-01-05":[0.0,0.0,0.0,0.0,1.0],"2038-01-06":[0.993,0.007,0.0,0.0,0.0]},"1460-1":{"2038-02-04":[0.0,0.0,0.0,0.0,1.0],"2038-02-05":[1.0,0.0,0.0,0.0,0.0]},"1460-2":{"2038-03-05":[0.0,0.0,0.0,0.0,1.0],"2038-03-06":[0.0,0.0,0.538,0.462,0.0]},"1460-3":{"2038-04-04":[0.0,0.0,0.0,0.0,1.0],"2038-04-05":[0.0,0.0,0.0,0.0,1.0]},"1460-4":{"2038-05-04":[0.0,0.0,0.0,0.0,1.0],"2038-05-05":[1.0,0.0,0.0,0.0,0.0]},"1460-5":{"2038-06-02":[0,0,0,0,1],"2038-06-03":[0.0,0.0,0.0,1.0,0.0],"2038-06-04":[1.0,0.0,0.0,0.0,0.0]},"1460-6":{"2038-07-02":[0.0,0.0,0.0,0.0,1.0],"2038-07-03":[1.0,0.0,0.0,0.0,0.0]},"1460-7":{"2038-08-01":[0.0,0.083,0.917,0.0,0.0],"2038-08-02":[1.0,0.0,0.0,0.0,0.0]},"1460-8":{"2038-08-30":[0.0,0.0,0.0,1.0,0.0],"2038-08-31":[1.0,0.0,0.0,0.0,0.0]},"1460-9":{"2038-09-29":[0.977,0.023,0.0,0.0,0.0],"2038-09-30":[1.0,0.0,0.0,0.0,0.0]},"1460-10":{"2038-10-28":[0.0,0.0,0.501,0.499,0.0],"2038-10-29":[1.0,0.0,0.0,0.0,0.0]},"1460-11":{"2038-11-26":[0.0,0.0,0.0,0.0,1.0],"2038-11-27":[1.0,0.0,0.0,0.0,0.0]},"1460-12":{"2038-12-26":[0.0,0.0,0.327,0.673,0.0],"2038-12-27":[1.0,0.0,0.0,0.0,0.0]},"1461-1":{"2039-01-24":[0.0,0.0,0.0,0.0,1.0],"2039-01-25":[1.0,0.0,0.0,0.0,0.0]}},"exact":false,"end":[1461,1]};
+const E = HijriEngine, DAY = 864e5, dn = E.dn, iso = E.iso;
+const now = new Date();
+const TODAY = dn(now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0'));
+const HM = ['Muharram','Safar','Rabi al-Awwal','Rabi al-Thani','Jumada al-Ula','Jumada al-Thani','Rajab','Shaban','Ramadan','Shawwal','Dhul-Qadah','Dhul-Hijjah'];
+const HMA = ['محرم','صفر','ربيع الأول','ربيع الآخر','جمادى الأولى','جمادى الآخرة','رجب','شعبان','رمضان','شوال','ذو القعدة','ذو الحجة'];
+const GM = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const WD = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const gdate = t => { const d = new Date(t*DAY); return `${WD[d.getUTCDay()]} ${d.getUTCDate()} ${GM[d.getUTCMonth()]} ${d.getUTCFullYear()}`; };
+const pct = p => { const v = p*100; return v >= 99.5 ? '>99%' : v < 0.5 ? '<1%' : Math.round(v) + '%'; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const $ = id => document.getElementById(id);
+const KEY = new URLSearchParams(location.search).get('key') || '';
+const API = '/api/confirmations';
+
+let CONFS = [], ADMIN = false, CHOICE = null, STAGE = 'pick', MSG = null, UNDO = false, BUSY = false;
+
+async function api(method, body) {
+  const ctl = new AbortController(); setTimeout(() => ctl.abort(), 10000);
+  const r = await fetch(API, { method, cache: 'no-store', signal: ctl.signal,
+    headers: { 'content-type': 'application/json', ...(KEY ? { 'x-admin-key': KEY } : {}) },
+    body: body ? JSON.stringify(body) : undefined });
+  let j = {}; try { j = await r.json(); } catch (e) {}
+  if (!r.ok) throw new Error(j.message || `The server answered ${r.status}.`);
+  return j;
+}
+
+function setStatus(kind, html) { const el = $('keyStatus'); el.className = 'status ' + kind; el.innerHTML = `<span class="dot"></span><span>${html}</span>`; }
+
+function render() {
+  const r = E.chain(D, CONFS), nx = r.next, prev = r.known[r.known.length - 1];
+  const seen = nx.ev + 1, notSeen = nx.ev + 2;
+  const opts = [
+    { t: seen, k: 'Crescent seen', s: `${HM[prev.hm-1]} had 29 days`, p: nx.p },
+    { t: notSeen, k: 'Not seen', s: `${HM[prev.hm-1]} had 30 days`, p: 1 - nx.p }];
+  const before = TODAY < nx.ev;
+  const card = $('nextCard');
+  if (nx.hy > 1460) { card.innerHTML = '<h2 id="nextH">All months through 1460 are confirmed.</h2>'; return renderRest(r); }
+  card.innerHTML = `
+    <span class="label" id="nextH">Next month to confirm</span>
+    <div class="month"><span class="n">${HM[nx.hm-1]} ${nx.hy}</span><span class="ar" dir="rtl" lang="ar">${HMA[nx.hm-1]} ${nx.hy} هـ</span></div>
+    <div class="facts">
+      <span>Previous month: <b>${HM[prev.hm-1]} ${prev.hy}</b>, started ${gdate(prev.t)}${prev.src === 'admin' ? ' (confirmed here)' : ' (official)'}.</span>
+      <span>Sighting evening (29 ${HM[prev.hm-1]}): <b>${gdate(nx.ev)}</b>.</span>
+    </div>
+    ${before ? `<div class="status warn"><span class="dot"></span><span>The sighting evening has not come yet. Confirm only after the Ministry of Habous announces the start of ${HM[nx.hm-1]}.</span></div>` : ''}
+    <div class="opts" role="radiogroup" aria-label="What did the Ministry announce?">
+      ${opts.map((o, i) => `<button type="button" class="opt" role="radio" aria-checked="${CHOICE === o.t}" data-t="${o.t}" ${STAGE !== 'pick' || !ADMIN ? 'disabled' : ''}>
+        <span class="k">${o.k}</span><span class="d">${gdate(o.t)}</span><span class="s">${o.s}</span><span class="p">Model: ${pct(o.p)}</span></button>`).join('')}
+    </div>
+    <label class="f" for="src">Link to the announcement (optional, shown on the calendar)
+      <input type="url" id="src" inputmode="url" placeholder="https://www.habous.gov.ma/…" ${STAGE !== 'pick' || !ADMIN ? 'disabled' : ''}></label>
+    ${STAGE === 'confirm' ? `<div class="confirm" role="alertdialog" aria-labelledby="cfm">
+        <span id="cfm">Confirm that <b>${HM[nx.hm-1]} ${nx.hy}</b> starts on <b>${gdate(CHOICE)}</b>? The public calendar updates right away. You can undo it below.</span>
+        <div class="row"><button type="button" class="btn" id="doSave" ${BUSY ? 'disabled' : ''}>${BUSY ? 'Saving…' : 'Yes, confirm'}</button><button type="button" class="btn ghost" id="cancel" ${BUSY ? 'disabled' : ''}>Cancel</button></div>
+      </div>` : `<div class="row"><button type="button" class="btn" id="save" ${CHOICE === null || !ADMIN ? 'disabled' : ''}>Confirm ${HM[nx.hm-1]}</button>
+        ${!ADMIN ? '<span class="muted" style="font-size:14px">Needs a valid admin link.</span>' : CHOICE === null ? '<span class="muted" style="font-size:14px">Pick the announced start date first.</span>' : ''}</div>`}
+    ${MSG ? `<div class="msg ${MSG.ok ? 'ok' : 'bad'}" role="status">${MSG.html}</div>` : ''}`;
+  const src = $('src'); if (src && render.src) src.value = render.src;
+  if (src) src.oninput = () => { render.src = src.value; };
+  card.querySelectorAll('.opt').forEach(b => b.onclick = () => { CHOICE = +b.dataset.t; MSG = null; render(); card.querySelector(`.opt[data-t="${CHOICE}"]`).focus(); });
+  if ($('save')) $('save').onclick = () => {
+    const v = (render.src || '').trim();
+    if (v && !/^https?:\/\/\S+$/.test(v)) { MSG = { ok: false, html: 'The link must start with https://' }; return render(); }
+    STAGE = 'confirm'; MSG = null; render(); $('doSave').focus(); };
+  if ($('cancel')) $('cancel').onclick = () => { STAGE = 'pick'; render(); };
+  if ($('doSave')) $('doSave').onclick = async () => {
+    BUSY = true; render();
+    try {
+      const j = await api('POST', { hy: nx.hy, hm: nx.hm, start: iso(CHOICE), src: (render.src || '').trim() || null });
+      CONFS = j.confirmations; MSG = { ok: true, html: `Saved. ${HM[nx.hm-1]} ${nx.hy} starts ${gdate(CHOICE)}. <a href="/#m${nx.hy}-${nx.hm}">See it on the calendar</a>.` };
+      CHOICE = null; render.src = '';
+    } catch (e) { MSG = { ok: false, html: esc(e.message) }; }
+    BUSY = false; STAGE = 'pick'; render();
+  };
+  renderRest(r);
+}
+
+function renderRest(r) {
+  // what the calendar shows next
+  const fc = r.months.filter(m => m.fc).slice(0, 6);
+  $('aheadCard').innerHTML = `<h2>What the calendar will show next</h2>
+    <p class="muted" style="font-size:14.5px">Forecast from the confirmed dates above. It updates as soon as you confirm a month.</p>
+    <ul class="list">${fc.map(m => `<li><span class="m">${HM[m.hm-1]} ${m.hy}</span><span class="x">${gdate(m.t0)}</span>
+      <span class="r"><span class="chip exp">Expected ${pct(m.dist[iso(m.t0)] || 0)}</span></span></li>`).join('')}</ul>`;
+  // confirmations made here
+  const h = $('histCard');
+  h.innerHTML = `<h2>Confirmed on this page</h2>` + (CONFS.length ? `<ul class="list">${[...CONFS].reverse().map(c => `<li>
+      <span class="m">${HM[c.hm-1]} ${c.hy}</span><span class="x">Starts ${gdate(dn(c.start))}${c.src ? ` · <a href="${esc(c.src)}" target="_blank" rel="noopener">announcement</a>` : ''}</span>
+      <span class="r muted">${c.at ? 'Saved ' + new Date(c.at).toLocaleString() : ''}</span></li>`).join('')}</ul>
+    ${UNDO ? `<div class="confirm danger"><span>Remove the confirmation of <b>${HM[CONFS[CONFS.length-1].hm-1]} ${CONFS[CONFS.length-1].hy}</b>? The calendar goes back to the forecast for that month.</span>
+      <div class="row"><button type="button" class="btn danger" id="doUndo">Yes, undo</button><button type="button" class="btn ghost" id="noUndo">Keep it</button></div></div>`
+      : `<div class="row"><button type="button" class="btn ghost" id="undo" ${ADMIN ? '' : 'disabled'}>Undo the last confirmation</button></div>`}`
+    : `<p class="muted">Nothing yet. The calendar uses the official dates up to ${HM[D.official[D.official.length-1][1]-1]} ${D.official[D.official.length-1][0]}.</p>`);
+  if ($('undo')) $('undo').onclick = () => { UNDO = true; render(); $('doUndo').focus(); };
+  if ($('noUndo')) $('noUndo').onclick = () => { UNDO = false; render(); };
+  if ($('doUndo')) $('doUndo').onclick = async () => {
+    try { const j = await api('DELETE'); CONFS = j.confirmations; MSG = { ok: true, html: `Removed ${HM[j.removed.hm-1]} ${j.removed.hy}. It is back to the forecast.` }; }
+    catch (e) { MSG = { ok: false, html: esc(e.message) }; }
+    UNDO = false; render(); };
+  // export
+  $('export').value = JSON.stringify(CONFS.map(c => ({ hy: c.hy, hm: c.hm, name: HM[c.hm-1], start: c.start, src: c.src || null, official: true, pending: false })), null, 1);
+}
+$('copyBtn').onclick = async () => {
+  try { await navigator.clipboard.writeText($('export').value); $('copyMsg').textContent = 'Copied.'; }
+  catch (e) { $('export').select(); $('copyMsg').textContent = 'Press Ctrl+C to copy the selected text.'; }
+};
+
+(async function init() {
+  render();
+  if (!/^https?:$/.test(location.protocol)) { setStatus('bad', 'This page needs the website’s server. Open it on the Netlify site, not as a file.'); return; }
+  try {
+    const j = await api('GET');
+    CONFS = j.confirmations || []; ADMIN = !!j.admin;
+    if (!j.adminConfigured) setStatus('bad', '<b>No admin key is set on the server.</b> In Netlify, open Site configuration → Environment variables, add <code>ADMIN_KEY</code> with a long random value, redeploy, then open <code>/admin?key=</code> followed by that value.');
+    else if (!KEY) setStatus('bad', '<b>This link has no key.</b> Open the admin link that ends with <code>?key=…</code>.');
+    else if (!ADMIN) setStatus('bad', '<b>This key is wrong.</b> Check the admin link; it must match <code>ADMIN_KEY</code> in Netlify.');
+    else setStatus('ok', '<b>Admin link OK.</b> Changes you make here show on the public calendar immediately. Keep this link private.');
+  } catch (e) { setStatus('bad', 'Could not reach the server: ' + esc(e.message)); }
+  render();
+})();
+</script>

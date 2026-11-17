@@ -4,21 +4,38 @@ A Hijri calendar for Morocco that uses the official start dates where they are k
 
 Morocco's Ministry of Habous and Islamic Affairs starts each month the day after the new crescent is sighted in Morocco on the evening of the 29th. If it isn't sighted, the month runs to 30 days. This project learns how Morocco's decisions relate to the crescent visibility maps published by moonsighting.com. It then uses that to forecast future months, with a probability for each date.
 
-**Open `index.html`.** It is the main page: a small (about 60 KB), easy-to-read calendar that opens in Arabic, with French and English one tap away. It shows today's Hijri date with the moon phase, a countdown to Ramadan and the Eids, one month at a time (tap any day for details, swipe or use the arrows to change month, or jump with the year picker and month strip), each year's holidays, a date converter, and a button to add a year's holidays to Google, Apple or Outlook Calendar. Every month links to itself (`index.html#m1448-9` is Ramadan 1448). Official dates are marked confirmed; every forecast date shows how certain it is as a percentage.
+**Open `index.html`.** It is the main page: a small (about 70 KB), easy-to-read calendar that opens in Arabic, with French and English one tap away. It shows today's Hijri date with the moon phase, a countdown to Ramadan and the Eids, one month at a time (tap any day for details, swipe or use the arrows to change month, or jump with the year picker and month strip), each year's holidays, a date converter, and a button to add a year's holidays to Google, Apple or Outlook Calendar. Every month links to itself (`index.html#m1448-9` is Ramadan 1448). Official dates are marked confirmed; every forecast date shows how certain it is as a percentage.
 
 **For the full forecast and evidence, open `details.html`.** It is one self-contained page with the crescent maps, the model's predictions against Morocco's announcements, and its accuracy.
 
 Both pages need no build step to view.
 
-### Hosting on Netlify
+### Hosting on Netlify (with the admin page)
 
-The site is set up for [Netlify](https://www.netlify.com/) in `netlify.toml`. On every push, Netlify rebuilds the calendar from `data/calendar.json` and publishes `index.html` (home page) and `details.html` from a `site/` folder, so the data files and scripts are not served. To connect it once:
+The site runs on [Netlify](https://www.netlify.com/), set up in `netlify.toml`. On every push Netlify builds `site/` (the calendar, `admin.html` and `details.html`) with Python's standard library, and deploys one function, `/api/confirmations`, which keeps the month starts confirmed on the admin page in Netlify Blobs (Netlify's built-in storage). Everything fits in Netlify's free plan.
 
-1. Sign in at app.netlify.com with GitHub and choose **Add new site → Import an existing project → GitHub**.
-2. Allow Netlify access to this repository and select it.
-3. Keep the settings it reads from `netlify.toml` (build command and `site` publish folder), pick the branch to publish, and click **Deploy**.
+**Connect it once**
 
-After an announcement, update the data and push: the site updates within a minute.
+1. Sign in at app.netlify.com with GitHub, choose **Add new site → Import an existing project → GitHub**, and select this repository and the branch to publish. Keep the build settings Netlify reads from `netlify.toml`, then deploy.
+2. In **Site configuration → Environment variables**, add `ADMIN_KEY` with a long random value (for example from a password generator), then **Deploys → Trigger deploy**.
+3. Bookmark the admin page: `https://<your-site>.netlify.app/admin?key=<ADMIN_KEY>`. The key is the only protection, so keep the link private. To change it, change `ADMIN_KEY` and redeploy.
+
+**Confirming a month**
+
+When the Ministry of Habous announces the start of a month, open the admin link, pick *Crescent seen* or *Not seen* (each shows its date and the model's probability), optionally paste the announcement link, and confirm. The public calendar shows the month as confirmed straight away, and every later month is re-forecast from it in the visitor's browser (`scripts/engine.js`, the same method as `build_calendar.py`). Only the next month can be confirmed, always 29 or 30 days after the previous one, and the last confirmation can be undone.
+
+**Exact forecasts after a surprise (one-time step)**
+
+The browser needs the zone shares of every possible 29th evening. Until `data/evenings.json` exists it uses the evenings the last build measured, and approximates rare cases (an evening before them counts as not visible, one after them as visible). To make it exact, run this once on the computer with the maps, then commit `data/evenings.json`:
+
+```powershell
+$env:MOON_MAPS = "C:\Users\C100\Desktop\moon\Moon Visibility Maps (moonsighting.com)"
+python scripts\export_evenings.py
+```
+
+**Teaching the model**
+
+Confirmations live on Netlify, not in the repository. Before a rebuild with the maps, copy them from the admin page's *Export* box into `data/official_months_2024_2026.json` (and the sighting results into `data/dataset.json`), then run `python scripts/build_calendar.py` and push. Those months become official and the admin page continues from the next one.
 
 ## What the detailed page (`details.html`) shows
 
@@ -59,10 +76,10 @@ Requires Python 3.10+ (`pip install -r requirements.txt`) and curl.
 export MOON_MAPS="/path/to/Moon Visibility Maps (moonsighting.com)"
 python scripts/fetch_maps.py
 
-# 2. Rebuild data/calendar.json, details.html and index.html
+# 2. Rebuild data/calendar.json, details.html, index.html and admin.html
 python scripts/build_calendar.py            # TODAY=YYYY-MM-DD to pin the date
 
-# Only rebuild the main calendar page index.html from data/calendar.json (no maps needed)
+# Only rebuild index.html and admin.html from data/calendar.json (no maps needed)
 python scripts/build_simple.py
 
 # Optional: re-run model selection
@@ -80,7 +97,8 @@ To add a new month once Morocco announces it, add the evening to `data/dataset.j
 | `data/official_months_2024_2026.json` | Official Moroccan month starts Jumada al-Thani 1446 to Jumada al-Ula 1448, with source links |
 | `data/reports_parsed.json` | Morocco results parsed from moonsighting.org.uk monthly reports |
 | `data/maps_1437.csv` | URLs of the 1437 AH maps |
-| `data/calendar.json` | Everything both pages display (months, evidence, forecasts, stats) |
+| `data/calendar.json` | Everything the pages display (months, evidence, forecasts, stats) |
+| `data/evenings.json` | Optional, from `scripts/export_evenings.py`: zone shares for every possible future 29th evening |
 
 ## Credits and caveats
 

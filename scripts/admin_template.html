@@ -1,0 +1,234 @@
+<title>Hijri Calendar Admin</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@500;600;700&family=Noto+Kufi+Arabic:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Arabic:wght@400;500&display=swap">
+<style>
+/* Layout: one narrow column. Key status, then the next month to confirm (two answer cards, optional link, save with an
+   in-page confirmation), then what the calendar will show next, the confirmations made here with undo, and the export. */
+:root{
+  --bg:#F1F4F2; --surface:#FFFFFF; --ink:#13201B; --muted:#56665E; --line:#D9E1DC; --wash:#E9EEEB;
+  --accent:#136F55; --accent-ink:#FFFFFF; --accent-soft:#DDEEE6;
+  --brass:#8C620E; --brass-soft:#F5E6C2; --red:#B42318; --red-soft:#FBE2DF;
+  --display:"Reem Kufi","Noto Kufi Arabic","Segoe UI",system-ui,sans-serif;
+  --body:"IBM Plex Sans","IBM Plex Sans Arabic",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0D1512; --surface:#141F1B; --ink:#E5EDE9; --muted:#97A9A0; --line:#25342E; --wash:#1B2924;
+  --accent:#4FC39C; --accent-ink:#08170F; --accent-soft:#16332A;
+  --brass:#E2B550; --brass-soft:#3A2F14; --red:#F2877C; --red-soft:#3A1A18; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D1512; --surface:#141F1B; --ink:#E5EDE9; --muted:#97A9A0; --line:#25342E; --wash:#1B2924;
+  --accent:#4FC39C; --accent-ink:#08170F; --accent-soft:#16332A;
+  --brass:#E2B550; --brass-soft:#3A2F14; --red:#F2877C; --red-soft:#3A1A18; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1,h2,h3{font-family:var(--display);font-weight:600;margin:0;line-height:1.2;text-wrap:balance}
+h1{font-size:clamp(22px,4vw,28px)} h2{font-size:21px} h3{font-size:17px}
+p{margin:0}
+a{color:var(--accent);text-underline-offset:3px}
+button,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+.ar{font-family:"Noto Kufi Arabic","IBM Plex Sans Arabic",sans-serif;unicode-bidi:isolate}
+.muted{color:var(--muted)} .num{font-variant-numeric:tabular-nums}
+.head{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between}
+.head .t{display:flex;flex-direction:column;gap:2px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.label{font-size:12px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;color:var(--muted)}
+.status{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:12px;font-size:15px}
+.status.ok{background:var(--accent-soft)} .status.warn{background:var(--brass-soft)} .status.bad{background:var(--red-soft)}
+.status b{font-weight:600}
+.status .dot{flex:none;width:10px;height:10px;border-radius:50%;margin-top:7px;background:var(--muted)}
+.status.ok .dot{background:var(--accent)} .status.warn .dot{background:var(--brass)} .status.bad .dot{background:var(--red)}
+.month{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+.month .n{font-family:var(--display);font-size:clamp(26px,5vw,34px);font-weight:700;line-height:1.15}
+.month .ar{font-size:22px;color:var(--muted)}
+.facts{display:flex;flex-direction:column;gap:4px;font-size:15px}
+.opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (max-width:560px){.opts{grid-template-columns:1fr}}
+.opt{all:unset;box-sizing:border-box;cursor:pointer;border:2px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;background:var(--surface)}
+.opt:hover{border-color:var(--accent)}
+.opt:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.opt[aria-checked="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.opt .k{font-weight:600}
+.opt .d{font-family:var(--display);font-size:20px;font-weight:600;line-height:1.3}
+.opt .s{font-size:14px;color:var(--muted)}
+.opt .p{font-size:13px;font-weight:600;color:var(--brass)}
+label.f{display:flex;flex-direction:column;gap:6px;font-size:14.5px}
+input[type=url]{padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--wash);width:100%;min-height:44px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;background:var(--accent);color:var(--accent-ink);border-radius:10px;padding:10px 18px;font-weight:600;cursor:pointer;min-height:44px}
+.btn:hover{filter:brightness(1.07)}
+.btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.danger{background:var(--red);color:#fff}
+.confirm{border:2px solid var(--accent);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;background:var(--accent-soft)}
+.confirm.danger{border-color:var(--red);background:var(--red-soft)}
+.msg{font-size:15px;padding:10px 14px;border-radius:10px}
+.msg.ok{background:var(--accent-soft)} .msg.bad{background:var(--red-soft)}
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.list li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:10px 0;border-top:1px solid var(--line);align-items:baseline}
+.list li:first-child{border-top:0}
+.list .m{font-weight:600}
+.list .x{font-size:14px;color:var(--muted);grid-column:1}
+.list .r{grid-row:1/3;grid-column:2;font-size:13.5px;text-align:end}
+.chip{display:inline-flex;align-items:center;font-size:12.5px;font-weight:600;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.chip.ok{background:var(--accent-soft);color:var(--accent)} .chip.exp{background:var(--brass-soft);color:var(--brass)}
+textarea{width:100%;min-height:150px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--wash);font-family:ui-monospace,Consolas,monospace;font-size:13px;resize:vertical}
+details summary{cursor:pointer;font-weight:600}
+</style>
+
+<div class="wrap" id="app">
+  <header class="head">
+    <div class="t"><span class="label">Hijri Calendar · Morocco</span><h1>Admin: confirm month starts</h1></div>
+    <a href="/" id="viewCal">View the calendar →</a>
+  </header>
+
+  <div id="keyStatus" class="status warn"><span class="dot"></span><span>Checking the admin link…</span></div>
+
+  <section class="card" id="nextCard" aria-labelledby="nextH"></section>
+  <section class="card" id="aheadCard"></section>
+  <section class="card" id="histCard"></section>
+
+  <section class="card">
+    <details>
+      <summary>Export for the repository</summary>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
+        <p class="muted" style="font-size:14.5px">The model only learns from dates stored in the repository. Before your next rebuild with the moon maps, add these entries to <code>data/official_months_2024_2026.json</code> (and the sighting result for each 29th evening to <code>data/dataset.json</code>), then run <code>python scripts/build_calendar.py</code>. After that rebuild these months are official and the admin page continues from the next one.</p>
+        <textarea id="export" readonly aria-label="Confirmed months as JSON"></textarea>
+        <div class="row"><button type="button" class="btn ghost" id="copyBtn">Copy</button><span id="copyMsg" class="muted" aria-live="polite"></span></div>
+      </div>
+    </details>
+  </section>
+</div>
+
+<script>
+/*__ENGINE__*/
+</script>
+<script>
+const D = __SIMPLE_DATA__;
+const E = HijriEngine, DAY = 864e5, dn = E.dn, iso = E.iso;
+const now = new Date();
+const TODAY = dn(now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0'));
+const HM = ['Muharram','Safar','Rabi al-Awwal','Rabi al-Thani','Jumada al-Ula','Jumada al-Thani','Rajab','Shaban','Ramadan','Shawwal','Dhul-Qadah','Dhul-Hijjah'];
+const HMA = ['محرم','صفر','ربيع الأول','ربيع الآخر','جمادى الأولى','جمادى الآخرة','رجب','شعبان','رمضان','شوال','ذو القعدة','ذو الحجة'];
+const GM = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const WD = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const gdate = t => { const d = new Date(t*DAY); return `${WD[d.getUTCDay()]} ${d.getUTCDate()} ${GM[d.getUTCMonth()]} ${d.getUTCFullYear()}`; };
+const pct = p => { const v = p*100; return v >= 99.5 ? '>99%' : v < 0.5 ? '<1%' : Math.round(v) + '%'; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const $ = id => document.getElementById(id);
+const KEY = new URLSearchParams(location.search).get('key') || '';
+const API = '/api/confirmations';
+
+let CONFS = [], ADMIN = false, CHOICE = null, STAGE = 'pick', MSG = null, UNDO = false, BUSY = false;
+
+async function api(method, body) {
+  const ctl = new AbortController(); setTimeout(() => ctl.abort(), 10000);
+  const r = await fetch(API, { method, cache: 'no-store', signal: ctl.signal,
+    headers: { 'content-type': 'application/json', ...(KEY ? { 'x-admin-key': KEY } : {}) },
+    body: body ? JSON.stringify(body) : undefined });
+  let j = {}; try { j = await r.json(); } catch (e) {}
+  if (!r.ok) throw new Error(j.message || `The server answered ${r.status}.`);
+  return j;
+}
+
+function setStatus(kind, html) { const el = $('keyStatus'); el.className = 'status ' + kind; el.innerHTML = `<span class="dot"></span><span>${html}</span>`; }
+
+function render() {
+  const r = E.chain(D, CONFS), nx = r.next, prev = r.known[r.known.length - 1];
+  const seen = nx.ev + 1, notSeen = nx.ev + 2;
+  const opts = [
+    { t: seen, k: 'Crescent seen', s: `${HM[prev.hm-1]} had 29 days`, p: nx.p },
+    { t: notSeen, k: 'Not seen', s: `${HM[prev.hm-1]} had 30 days`, p: 1 - nx.p }];
+  const before = TODAY < nx.ev;
+  const card = $('nextCard');
+  if (nx.hy > 1460) { card.innerHTML = '<h2 id="nextH">All months through 1460 are confirmed.</h2>'; return renderRest(r); }
+  card.innerHTML = `
+    <span class="label" id="nextH">Next month to confirm</span>
+    <div class="month"><span class="n">${HM[nx.hm-1]} ${nx.hy}</span><span class="ar" dir="rtl" lang="ar">${HMA[nx.hm-1]} ${nx.hy} هـ</span></div>
+    <div class="facts">
+      <span>Previous month: <b>${HM[prev.hm-1]} ${prev.hy}</b>, started ${gdate(prev.t)}${prev.src === 'admin' ? ' (confirmed here)' : ' (official)'}.</span>
+      <span>Sighting evening (29 ${HM[prev.hm-1]}): <b>${gdate(nx.ev)}</b>.</span>
+    </div>
+    ${before ? `<div class="status warn"><span class="dot"></span><span>The sighting evening has not come yet. Confirm only after the Ministry of Habous announces the start of ${HM[nx.hm-1]}.</span></div>` : ''}
+    <div class="opts" role="radiogroup" aria-label="What did the Ministry announce?">
+      ${opts.map((o, i) => `<button type="button" class="opt" role="radio" aria-checked="${CHOICE === o.t}" data-t="${o.t}" ${STAGE !== 'pick' || !ADMIN ? 'disabled' : ''}>
+        <span class="k">${o.k}</span><span class="d">${gdate(o.t)}</span><span class="s">${o.s}</span><span class="p">Model: ${pct(o.p)}</span></button>`).join('')}
+    </div>
+    <label class="f" for="src">Link to the announcement (optional, shown on the calendar)
+      <input type="url" id="src" inputmode="url" placeholder="https://www.habous.gov.ma/…" ${STAGE !== 'pick' || !ADMIN ? 'disabled' : ''}></label>
+    ${STAGE === 'confirm' ? `<div class="confirm" role="alertdialog" aria-labelledby="cfm">
+        <span id="cfm">Confirm that <b>${HM[nx.hm-1]} ${nx.hy}</b> starts on <b>${gdate(CHOICE)}</b>? The public calendar updates right away. You can undo it below.</span>
+        <div class="row"><button type="button" class="btn" id="doSave" ${BUSY ? 'disabled' : ''}>${BUSY ? 'Saving…' : 'Yes, confirm'}</button><button type="button" class="btn ghost" id="cancel" ${BUSY ? 'disabled' : ''}>Cancel</button></div>
+      </div>` : `<div class="row"><button type="button" class="btn" id="save" ${CHOICE === null || !ADMIN ? 'disabled' : ''}>Confirm ${HM[nx.hm-1]}</button>
+        ${!ADMIN ? '<span class="muted" style="font-size:14px">Needs a valid admin link.</span>' : CHOICE === null ? '<span class="muted" style="font-size:14px">Pick the announced start date first.</span>' : ''}</div>`}
+    ${MSG ? `<div class="msg ${MSG.ok ? 'ok' : 'bad'}" role="status">${MSG.html}</div>` : ''}`;
+  const src = $('src'); if (src && render.src) src.value = render.src;
+  if (src) src.oninput = () => { render.src = src.value; };
+  card.querySelectorAll('.opt').forEach(b => b.onclick = () => { CHOICE = +b.dataset.t; MSG = null; render(); card.querySelector(`.opt[data-t="${CHOICE}"]`).focus(); });
+  if ($('save')) $('save').onclick = () => {
+    const v = (render.src || '').trim();
+    if (v && !/^https?:\/\/\S+$/.test(v)) { MSG = { ok: false, html: 'The link must start with https://' }; return render(); }
+    STAGE = 'confirm'; MSG = null; render(); $('doSave').focus(); };
+  if ($('cancel')) $('cancel').onclick = () => { STAGE = 'pick'; render(); };
+  if ($('doSave')) $('doSave').onclick = async () => {
+    BUSY = true; render();
+    try {
+      const j = await api('POST', { hy: nx.hy, hm: nx.hm, start: iso(CHOICE), src: (render.src || '').trim() || null });
+      CONFS = j.confirmations; MSG = { ok: true, html: `Saved. ${HM[nx.hm-1]} ${nx.hy} starts ${gdate(CHOICE)}. <a href="/#m${nx.hy}-${nx.hm}">See it on the calendar</a>.` };
+      CHOICE = null; render.src = '';
+    } catch (e) { MSG = { ok: false, html: esc(e.message) }; }
+    BUSY = false; STAGE = 'pick'; render();
+  };
+  renderRest(r);
+}
+
+function renderRest(r) {
+  // what the calendar shows next
+  const fc = r.months.filter(m => m.fc).slice(0, 6);
+  $('aheadCard').innerHTML = `<h2>What the calendar will show next</h2>
+    <p class="muted" style="font-size:14.5px">Forecast from the confirmed dates above. It updates as soon as you confirm a month.</p>
+    <ul class="list">${fc.map(m => `<li><span class="m">${HM[m.hm-1]} ${m.hy}</span><span class="x">${gdate(m.t0)}</span>
+      <span class="r"><span class="chip exp">Expected ${pct(m.dist[iso(m.t0)] || 0)}</span></span></li>`).join('')}</ul>`;
+  // confirmations made here
+  const h = $('histCard');
+  h.innerHTML = `<h2>Confirmed on this page</h2>` + (CONFS.length ? `<ul class="list">${[...CONFS].reverse().map(c => `<li>
+      <span class="m">${HM[c.hm-1]} ${c.hy}</span><span class="x">Starts ${gdate(dn(c.start))}${c.src ? ` · <a href="${esc(c.src)}" target="_blank" rel="noopener">announcement</a>` : ''}</span>
+      <span class="r muted">${c.at ? 'Saved ' + new Date(c.at).toLocaleString() : ''}</span></li>`).join('')}</ul>
+    ${UNDO ? `<div class="confirm danger"><span>Remove the confirmation of <b>${HM[CONFS[CONFS.length-1].hm-1]} ${CONFS[CONFS.length-1].hy}</b>? The calendar goes back to the forecast for that month.</span>
+      <div class="row"><button type="button" class="btn danger" id="doUndo">Yes, undo</button><button type="button" class="btn ghost" id="noUndo">Keep it</button></div></div>`
+      : `<div class="row"><button type="button" class="btn ghost" id="undo" ${ADMIN ? '' : 'disabled'}>Undo the last confirmation</button></div>`}`
+    : `<p class="muted">Nothing yet. The calendar uses the official dates up to ${HM[D.official[D.official.length-1][1]-1]} ${D.official[D.official.length-1][0]}.</p>`);
+  if ($('undo')) $('undo').onclick = () => { UNDO = true; render(); $('doUndo').focus(); };
+  if ($('noUndo')) $('noUndo').onclick = () => { UNDO = false; render(); };
+  if ($('doUndo')) $('doUndo').onclick = async () => {
+    try { const j = await api('DELETE'); CONFS = j.confirmations; MSG = { ok: true, html: `Removed ${HM[j.removed.hm-1]} ${j.removed.hy}. It is back to the forecast.` }; }
+    catch (e) { MSG = { ok: false, html: esc(e.message) }; }
+    UNDO = false; render(); };
+  // export
+  $('export').value = JSON.stringify(CONFS.map(c => ({ hy: c.hy, hm: c.hm, name: HM[c.hm-1], start: c.start, src: c.src || null, official: true, pending: false })), null, 1);
+}
+$('copyBtn').onclick = async () => {
+  try { await navigator.clipboard.writeText($('export').value); $('copyMsg').textContent = 'Copied.'; }
+  catch (e) { $('export').select(); $('copyMsg').textContent = 'Press Ctrl+C to copy the selected text.'; }
+};
+
+(async function init() {
+  render();
+  if (!/^https?:$/.test(location.protocol)) { setStatus('bad', 'This page needs the website’s server. Open it on the Netlify site, not as a file.'); return; }
+  try {
+    const j = await api('GET');
+    CONFS = j.confirmations || []; ADMIN = !!j.admin;
+    if (!j.adminConfigured) setStatus('bad', '<b>No admin key is set on the server.</b> In Netlify, open Site configuration → Environment variables, add <code>ADMIN_KEY</code> with a long random value, redeploy, then open <code>/admin?key=</code> followed by that value.');
+    else if (!KEY) setStatus('bad', '<b>This link has no key.</b> Open the admin link that ends with <code>?key=…</code>.');
+    else if (!ADMIN) setStatus('bad', '<b>This key is wrong.</b> Check the admin link; it must match <code>ADMIN_KEY</code> in Netlify.');
+    else setStatus('ok', '<b>Admin link OK.</b> Changes you make here show on the public calendar immediately. Keep this link private.');
+  } catch (e) { setStatus('bad', 'Could not reach the server: ' + esc(e.message)); }
+  render();
+})();
+</script>

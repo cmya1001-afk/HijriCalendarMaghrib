@@ -131,11 +131,12 @@ for st,start in zip(steps,path):
 for f in fut[:3]+fut[-3:]: print(f['hy'],f['hm'],f['best'],f['dist'])
 for i,m in enumerate(months[:-1]): m['len']=(D_(months[i+1]['start'])-D_(m['start'])).days
 months[-1]['len']=29
-out=dict(months=months,evidence=evidence,future=fut,hist=histout,stats=ST,coef=coef,hl=HL,today=TODAY)
+coef_full=dict(B=float(final.lr.coef_[0][0]),C=float(final.lr.coef_[0][1]),b=float(final.lr.intercept_[0]),rA=float(final.rate['A'][0]),rN=float(final.rate['N'][0]))
+out=dict(months=months,evidence=evidence,future=fut,hist=histout,stats=ST,coef=coef,coef_full=coef_full,hl=HL,today=TODAY)
 js=json.dumps(out,separators=(',',':'))
 open(DATA/'calendar.json','w').write(js)
 tpl=open(ROOT/'scripts'/'template.html',encoding='utf-8').read()
 open(ROOT/'details.html','w',encoding='utf-8').write(tpl.replace('__DATA__',js))
 print('wrote details.html and data/calendar.json')
-import build_simple; open(ROOT/'index.html','w',encoding='utf-8').write(build_simple.render()); print('wrote index.html')
+import build_simple; build_simple.write_site(ROOT); print('wrote index.html and admin.html')
 for e in evidence: print(e['hy'],e['hm'],e['ev'],e['evening'],'p=%.2f'%e['p'],'seen' if e['seen'] else 'not', 'OK' if (e['p']>.5)==e['seen'] else 'MISS')

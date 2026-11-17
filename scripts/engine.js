@@ -1,0 +1,103 @@
+/* Forecast engine shared by index.html and admin.html (inlined by scripts/build_simple.py).
+   From the official month starts, the months confirmed on the admin page, the model weights and the
+   visibility shares measured on each possible 29th evening, it rebuilds the month chain the same way
+   scripts/build_calendar.py does: the probability of each start date (forward pass) and the most
+   likely consistent chain of month starts (Viterbi), so every month is 29 or 30 days.
+
+   Data D (written by build_simple.py):
+     official: [[hy, hm, "YYYY-MM-DD"], ...]   official month starts, in order
+     coef:     {B, C, b, rA, rN}               cyan/grey weights, intercept, green-night and blank-night rates
+     ev:       {"hy-hm": {"YYYY-MM-DD": [A, B, C, D, N]}}  zone shares over Morocco on the evenings that
+               decide month hy-hm (exact = true when every map evening is listed)
+     end:      [hy, hm]                        last month to forecast (an anchor; not shown)
+*/
+var HijriEngine = (function () {
+  'use strict';
+  var DAY = 864e5;
+  function dn(s) { return Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10)) / DAY; }
+  function iso(n) { return new Date(n * DAY).toISOString().slice(0, 10); }
+  function nextMonth(hy, hm) { return hm === 12 ? [hy + 1, 1] : [hy, hm + 1]; }
+
+  // Probability that the crescent is reported, from the zone shares f = [A, B, C, D, N]
+  function pFeat(f, c) {
+    if (f[0] > 0.02) return c.rA;                 // some naked-eye green over Morocco
+    if (f[0] + f[1] + f[2] < 0.02) return c.rN;   // only red, or nothing visible
+    return 1 / (1 + Math.exp(-(c.b + c.B * f[1] + c.C * f[2])));
+  }
+  // Probability for the evening t (day number) that decides month hy-hm
+  function pEvening(D, hy, hm, t) {
+    var tab = D.ev[hy + '-' + hm] || {}, d = iso(t);
+    if (tab[d]) return pFeat(tab[d], D.coef);
+    var ds = Object.keys(tab).sort();
+    if (!ds.length) return 0.5;
+    if (d < ds[0]) return D.coef.rN;                // before the new-moon evening: not visible
+    if (d > ds[ds.length - 1]) return D.coef.rA;    // after the last map: easily visible
+    var best = ds[0];                               // gap in a partial table: nearest measured evening
+    ds.forEach(function (x) { if (Math.abs(dn(x) - t) < Math.abs(dn(best) - t)) best = x; });
+    return pFeat(tab[best], D.coef);
+  }
+
+  // confs: [{hy, hm, start, src?, at?}] from the admin page, in the order they were confirmed
+  function chain(D, confs) {
+    var known = D.official.map(function (o) { return { hy: o[0], hm: o[1], t: dn(o[2]), src: 'official' }; });
+    (confs || []).forEach(function (c) {
+      var last = known[known.length - 1], nx = nextMonth(last.hy, last.hm);
+      if (c.hy !== nx[0] || c.hm !== nx[1] || typeof c.start !== 'string') return;
+      var t = dn(c.start), gap = t - last.t;
+      if (gap === 29 || gap === 30) known.push({ hy: c.hy, hm: c.hm, t: t, src: 'admin', at: c.at || null, url: c.src || null });
+    });
+    var last = known[known.length - 1];
+
+    // months still to forecast, through D.end
+    var seq = [], cur = [last.hy, last.hm];
+    while (cur[0] * 12 + cur[1] < D.end[0] * 12 + D.end[1]) { cur = nextMonth(cur[0], cur[1]); seq.push(cur); }
+
+    var dist = new Map([[last.t, 1]]), vit = new Map([[last.t, [1, null]]]), steps = [];
+    seq.forEach(function (m) {
+      var hy = m[0], hm = m[1], nd = new Map(), nv = new Map();
+      dist.forEach(function (ps, s) {
+        var ev = s + 28, p = pEvening(D, hy, hm, ev);
+        [[ev + 1, p], [ev + 2, 1 - p]].forEach(function (x) { nd.set(x[0], (nd.get(x[0]) || 0) + ps * x[1]); });
+      });
+      vit.forEach(function (v, s) {
+        var ev = s + 28, p = pEvening(D, hy, hm, ev);
+        [[ev + 1, p], [ev + 2, 1 - p]].forEach(function (x) {
+          if (x[1] * v[0] > (nv.has(x[0]) ? nv.get(x[0])[0] : 0)) nv.set(x[0], [x[1] * v[0], s]);
+        });
+      });
+      var tot = 0; nd.forEach(function (v) { tot += v; });
+      dist = new Map(Array.from(nd).sort(function (a, b) { return a[0] - b[0]; })
+        .filter(function (e) { return e[1] / tot > 0.002; }).map(function (e) { return [e[0], e[1] / tot]; }));
+      var kept = Array.from(nv).filter(function (e) { return e[1][0] > 1e-12; }), mx = 0;
+      kept.forEach(function (e) { mx = Math.max(mx, e[1][0]); });
+      vit = new Map(kept.map(function (e) { return [e[0], [e[1][0] / mx, e[1][1]]]; }));
+      steps.push({ hy: hy, hm: hm, dist: dist, vit: vit });
+    });
+
+    // most likely consistent chain
+    var path = new Array(steps.length);
+    if (steps.length) {
+      var at = null, bv = -1;
+      steps[steps.length - 1].vit.forEach(function (v, k) { if (v[0] > bv) { bv = v[0]; at = k; } });
+      for (var i = steps.length - 1; i >= 0; i--) { path[i] = at; at = steps[i].vit.get(at)[1]; }
+    }
+
+    var months = known.map(function (k) { return { hy: k.hy, hm: k.hm, t0: k.t, fc: false, src: k.src, at: k.at || null, url: k.url || null, dist: null }; });
+    steps.forEach(function (st, i) {
+      var dd = {};
+      st.dist.forEach(function (v, k) { if (v >= 0.005) dd[iso(k)] = Math.round(v * 1e4) / 1e4; });
+      months.push({ hy: st.hy, hm: st.hm, t0: path[i], fc: true, src: 'forecast', dist: dd });
+    });
+    months.forEach(function (m, i) { m.len = i + 1 < months.length ? months[i + 1].t0 - m.t0 : 29; });
+
+    var nx = nextMonth(last.hy, last.hm), ev29 = last.t + 28;
+    return {
+      months: months,
+      known: known,
+      next: { hy: nx[0], hm: nx[1], prevStart: last.t, ev: ev29, p: pEvening(D, nx[0], nx[1], ev29) }
+    };
+  }
+
+  return { chain: chain, pEvening: pEvening, dn: dn, iso: iso, nextMonth: nextMonth };
+})();
+if (typeof module !== 'undefined') module.exports = HijriEngine;
